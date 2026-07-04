@@ -1,0 +1,45 @@
+## Thư mục Build đầu ra (Outputs)
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Re]leases/
+x64/
+x86/
+[Aa]R[Mm]/
+[Aa]R[Mm]64/
+bbin/
+bin/
+obj/
+
+## Thư mục cấu hình cá nhân của Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Thư mục Cache và các công cụ khác
+.tools/
+.nuget/
+*.nuget.props
+*.nuget.targets
+packages
+
+## Các file log và report khi chạy test
+*.log
+*.trx
+*.mdmp
+*.hdmp
+
+## Các file liên quan đến Rider / JetBrains (nếu có dùng)
+.idea/
+*.sln.iml
+
+## Thư mục node_modules (nếu dự án C# của bạn có làm Web API + React/Angular)
+node_modules/
+
+## OS-generated files (File tạm của hệ điều hành)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
