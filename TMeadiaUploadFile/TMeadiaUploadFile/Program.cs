@@ -29,11 +29,13 @@ namespace TMeadiaUploadFile
                 string loName = items[2];
                 string enDesc = items[3];
                 string loDesc = items[4];
-                string imgPath = items[5];
+                string imgName = items[5];
                 var mp4File = LocateMp4ByMovieName(orgName);
+                string imgPath = GetImagePath(@"\\msi\voice_storage\movie_images", imgName);
                 //UploadMovie(driver, fileToUpload, "C:\\abc.srt", enName, loName, enDesc, loDesc, imgPath);
             }
 
+            // Luu y : file anh la \\msi\voice_storage\movie_images
 
             IWebDriver driver = new ChromeDriver();
             driver.Manage().Window.Maximize();
@@ -50,6 +52,15 @@ namespace TMeadiaUploadFile
             }
         }
 
+        static string GetImagePath(string folderPath, string movieName) // khai bao bien trong ham (duong dan anh va ten phim). static = ham tinh, string = kieu du lieu phai tra ve.
+        {
+            if (!Directory.Exists(folderPath)) return null; // Kiem tra xem co ton tai ham GetImagePath hay chua. Neu KHONG TON TAI tra ve null
+
+            string[] files = Directory.GetFiles(folderPath, movieName + "*.png"); // Quet qua tat ca cac file (tim kiem) phim chua png o thu muc anh
+        
+            return files.Length > 0 ? files[0] : null; // files.Length > 0 nghia la co ton tai file nao hay khong. Neu co (?) thi tim thay anh, neu khong (: null) = khong tim thay anh ung voi phim do. 
+        } 
+
         static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(',');
         static ArrayList allMovieDirectories = new ArrayList();
         static string LocateMp4ByMovieName(string movieName)
@@ -63,7 +74,7 @@ namespace TMeadiaUploadFile
                     allMovieDirectories.AddRange(movies);
                 }
             }
-
+            
             foreach(string existedMovie in allMovieDirectories)
             {
                 if(KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
@@ -86,6 +97,7 @@ namespace TMeadiaUploadFile
             return res;
         }
 
+
         public static string KeepSpaceAndAlphanumeric(string input)
         {
             if (string.IsNullOrEmpty(input)) return input;
@@ -94,6 +106,10 @@ namespace TMeadiaUploadFile
             // c == ' ' ensures we only keep regular spaces (not tabs or newlines)
             return new string(input.Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray()).ToLower();
         }
+
+
+        // them vao day
+
 
         static WebDriverWait wait;
         static DefaultWait<IWebDriver> fluentWait;
