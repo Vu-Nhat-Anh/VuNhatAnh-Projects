@@ -3,10 +3,12 @@ using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using SeleniumExtras.WaitHelpers;
 using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Xml.Linq;
 
 namespace TMeadiaUploadFile
 {
@@ -14,6 +16,25 @@ namespace TMeadiaUploadFile
     {
         static void Main(string[] args)
         {
+
+            string[] fileToUploads = File.ReadAllLines("C:\\temp\\movie_to_upload.txt");
+
+            for (int i = 1; i < fileToUploads.Length; i++)
+            {
+                // create new record with metadata then upload video/srt file
+                var fileToUpload = fileToUploads[i];
+                var items = fileToUpload.Split('\t');
+                string orgName = items[0];
+                string enName = items[1];
+                string loName = items[2];
+                string enDesc = items[3];
+                string loDesc = items[4];
+                string imgPath = items[5];
+                var mp4File = LocateMp4ByMovieName(orgName);
+                //UploadMovie(driver, fileToUpload, "C:\\abc.srt", enName, loName, enDesc, loDesc, imgPath);
+            }
+
+
             IWebDriver driver = new ChromeDriver();
             driver.Manage().Window.Maximize();
 
@@ -22,19 +43,56 @@ namespace TMeadiaUploadFile
                 // multiple steps to go to upload movie page
                 Login(driver);
 
-                string[] fileToUploads = File.ReadAllLines("movie_to_upload.txt");
-
-                for (int i = 0; i < fileToUploads.Length; i++)
-                {
-                    // create new record with metadata then upload video/srt file
-                    var fileToUpload = fileToUploads[i];
-                    UploadMovie(driver, fileToUpload, "C:\\abc.srt");
-                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
             }
+        }
+
+        static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(',');
+        static ArrayList allMovieDirectories = new ArrayList();
+        static string LocateMp4ByMovieName(string movieName)
+        {
+            string res = "";
+            if (allMovieDirectories.Count == 0)
+            {
+                foreach (string rootMovieFolder in rootMovieFolders)
+                {
+                    var movies = Directory.GetDirectories(rootMovieFolder);
+                    allMovieDirectories.AddRange(movies);
+                }
+            }
+
+            foreach(string existedMovie in allMovieDirectories)
+            {
+                if(KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
+                    KeepSpaceAndAlphanumeric(movieName))
+                {
+                    // found the expected movie
+                    var mp4Files = Directory.GetFiles(existedMovie, "*.mp4");
+                    if (mp4Files.Count() > 0)
+                    {
+                        res = mp4Files[0];
+                        break;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            return res;
+        }
+
+        public static string KeepSpaceAndAlphanumeric(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return input;
+
+            // char.IsLetterOrDigit checks for A-Z, a-z, and 0-9
+            // c == ' ' ensures we only keep regular spaces (not tabs or newlines)
+            return new string(input.Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray()).ToLower();
         }
 
         static WebDriverWait wait;
@@ -117,7 +175,8 @@ namespace TMeadiaUploadFile
             catch { }
         }
 
-        static void UploadMovie(IWebDriver driver, string movieFilePath = @"C:\temp\test_upload.mp4", string srtFilePath = "")
+        static void UploadMovie(IWebDriver driver, string movieFilePath, string srtFilePath
+            , string enName, string loName, string enDesc, string loDesc, string imgPath)
         {
             try
             {
@@ -128,38 +187,35 @@ namespace TMeadiaUploadFile
                 // bam vao chon Movie
                 driver.FindElement(By.XPath("//*[@id='custom-css']/my-app/div/header/my-header/div/div/div[2]/div/a[2]/span")).Click(); Wait(1);
                 // nhap tieu de phim
-                driver.FindElement(By.XPath("//*[@id='crawl-file-title']")).SendKeys("Gohan"); Wait(1);
+                driver.FindElement(By.XPath("//*[@id='crawl-file-title']")).SendKeys(enName); Wait(1);
                 // bam nut continue
                 driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/footer/button[2]")).Click(); Wait(2);
 
                 // nhap cac thong tin chi tiet (tab main information)
                 // Tóm tắt phim
                 IWebElement filmOverview = driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[2]/section/div[1]/div[3]/textarea"));
-                filmOverview.SendKeys("It follows a decade in the life of a white stray dog with a pink nose as he moves through the lives of three different owners, exploring themes of love, loss, and the true meaning of home.");
+                filmOverview.SendKeys(enDesc);
 
                 // The loai phim
-                IWebElement filmGenre = driver.FindElement(By.XPath("//*[@id='film-genres']"));
-                filmGenre.SendKeys("Family");
+                //IWebElement filmGenre = driver.FindElement(By.XPath("//*[@id='film-genres']"));
+                //filmGenre.SendKeys("Family");
 
                 // Quoc gia xuat xu
-                IWebElement cog = driver.FindElement(By.XPath("//*[@id='film-country']"));
-                cog.Clear();
-                cog.SendKeys("Thailand");
+                //IWebElement cog = driver.FindElement(By.XPath("//*[@id='film-country']"));
+                //cog.Clear();
+                //cog.SendKeys("Thailand");
 
                 // Chuyen sang muc tieng Lao : //*[@id="content"]/div/ng-component/div/my-movie-form/div/div[1]/div/div[1]/div[2]/button[2]
                 driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[1]/div[2]/button[2]")).Click();
                 Wait(1);
 
-                Console.OutputEncoding = Encoding.UTF8;
-                Console.InputEncoding = Encoding.UTF8;
-
                 // Nhap tua tieng Lao cho phim Gohan : ໂກຮັງ
-                driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[2]/section/section/div/div/div/input")).SendKeys("ໂກຮັງ"); Wait(1);
+                driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[2]/section/section/div/div/div/input")).SendKeys(loName); Wait(1);
 
                 // Nhap phan tom tat phim bang tieng Lao
                 IWebElement filmOverviewinLao = driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[2]/section/div[1]/div[3]/textarea"));
                 filmOverviewinLao.Clear();
-                filmOverviewinLao.SendKeys("ມັນຕິດຕາມຊີວິດຂອງໝາຫຼົງທາງສີຂາວທີ່ມີດັງສີບົວເປັນເວລາໜຶ່ງທົດສະວັດ ໃນຂະນະທີ່ມັນຜ່ານຊີວິດຂອງເຈົ້າຂອງສາມຄົນ, ຄົ້ນຫາຫົວຂໍ້ຂອງຄວາມຮັກ, ການສູນເສຍ, ແລະ ຄວາມໝາຍທີ່ແທ້ຈິງຂອງບ້ານ.");
+                filmOverviewinLao.SendKeys(loDesc);
                 Wait(5);
 
                 // Bam nut tiep theo
