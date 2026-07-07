@@ -19,22 +19,6 @@ namespace TMeadiaUploadFile
 
             string[] fileToUploads = File.ReadAllLines("C:\\temp\\movie_to_upload.txt");
 
-            for (int i = 1; i < fileToUploads.Length; i++)
-            {
-                // create new record with metadata then upload video/srt file
-                var fileToUpload = fileToUploads[i];
-                var items = fileToUpload.Split('\t');
-                string orgName = items[0];
-                string enName = items[1];
-                string loName = items[2];
-                string enDesc = items[3];
-                string loDesc = items[4];
-                string imgName = items[5];
-                var mp4File = LocateMp4ByMovieName(orgName);
-                string imgPath = GetImagePath(@"\\msi\voice_storage\movie_images", imgName);
-                //UploadMovie(driver, fileToUpload, "C:\\abc.srt", enName, loName, enDesc, loDesc, imgPath);
-            }
-
             // Luu y : file anh la \\msi\voice_storage\movie_images
 
             IWebDriver driver = new ChromeDriver();
@@ -45,6 +29,25 @@ namespace TMeadiaUploadFile
                 // multiple steps to go to upload movie page
                 Login(driver);
 
+                for (int i = 25; i < fileToUploads.Length; i++)
+                {
+                    // create new record with metadata then upload video/srt file
+                    var fileToUpload = fileToUploads[i];
+                    var items = fileToUpload.Split('\t');
+                    string orgName = items[0];
+                    string enName = items[1];
+                    string loName = items[2];
+                    string enDesc = items[3];
+                    string loDesc = items[4];
+                    string imgName = items[5];
+                    var mp4File = LocateMp4ByMovieName(orgName);
+                    string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imgName);
+                    string imgPathDoc = imgPath[0];
+                    string imgPathNgang = imgPath[1];
+                    string srtFile = LocateSrtByMp4File(mp4File);
+                    UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
+                }
+
             }
             catch (Exception ex)
             {
@@ -52,14 +55,18 @@ namespace TMeadiaUploadFile
             }
         }
 
-        static string GetImagePath(string folderPath, string movieName) // khai bao bien trong ham (duong dan anh va ten phim). static = ham tinh, string = kieu du lieu phai tra ve.
+        static string[] GetImagePathByMovieName(string folderPath, string movieName) // khai bao bien trong ham (duong dan anh va ten phim). static = ham tinh, string = kieu du lieu phai tra ve.
         {
-            if (!Directory.Exists(folderPath)) return null; // Kiem tra xem co ton tai ham GetImagePath hay chua. Neu KHONG TON TAI tra ve null
+            string[] res = new string[2];   // 1 anh doc, 1 anh ngang
+            if (!Directory.Exists(folderPath)) return res; // Kiem tra xem co ton tai ham GetImagePath hay chua. Neu KHONG TON TAI tra ve null
 
-            string[] files = Directory.GetFiles(folderPath, movieName + "*.png"); // Quet qua tat ca cac file (tim kiem) phim chua png o thu muc anh
-        
-            return files.Length > 0 ? files[0] : null; // files.Length > 0 nghia la co ton tai file nao hay khong. Neu co (?) thi tim thay anh, neu khong (: null) = khong tim thay anh ung voi phim do. 
-        } 
+            string[] anhDoc = Directory.GetFiles(folderPath, movieName + "*dọc.png"); // Quet qua tat ca cac file (tim kiem) phim chua png o thu muc anh
+            res[0] = anhDoc.Length > 0 ? anhDoc[0] : ""; //anh.Length > 0 nghia la co ton tai file nao hay khong. Neu co (?) thi tim thay anh, neu khong (: null) = khong tim thay anh ung voi phim do. 
+            string[] anhNgang = Directory.GetFiles(folderPath, movieName + "*ngang.png"); // Quet qua tat ca cac file (tim kiem) phim chua png o thu muc anh
+            res[1] = anhNgang.Length > 0 ? anhNgang[0] : ""; //files.Length > 0 nghia la co ton tai file nao hay khong. Neu co (?) thi tim thay anh, neu khong (: null) = khong tim thay anh ung voi phim do. 
+
+            return res;
+        }
 
         static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(',');
         static ArrayList allMovieDirectories = new ArrayList();
@@ -74,10 +81,10 @@ namespace TMeadiaUploadFile
                     allMovieDirectories.AddRange(movies);
                 }
             }
-            
-            foreach(string existedMovie in allMovieDirectories)
+
+            foreach (string existedMovie in allMovieDirectories)
             {
-                if(KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
+                if (KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
                     KeepSpaceAndAlphanumeric(movieName))
                 {
                     // found the expected movie
@@ -97,6 +104,17 @@ namespace TMeadiaUploadFile
             return res;
         }
 
+        static string LocateSrtByMp4File(string mp4File)
+        {
+            string res = "";
+            string movieFolder = Path.GetDirectoryName(mp4File);
+            var srtFiles = Directory.GetFiles(movieFolder, "*.lo.srt");
+            if (srtFiles.Count() > 0)
+            {
+                res = srtFiles[0];
+            }
+            return res;
+        }
 
         public static string KeepSpaceAndAlphanumeric(string input)
         {
@@ -106,10 +124,6 @@ namespace TMeadiaUploadFile
             // c == ' ' ensures we only keep regular spaces (not tabs or newlines)
             return new string(input.Where(c => char.IsLetterOrDigit(c) || c == ' ').ToArray()).ToLower();
         }
-
-
-        // them vao day
-
 
         static WebDriverWait wait;
         static DefaultWait<IWebDriver> fluentWait;
@@ -191,13 +205,37 @@ namespace TMeadiaUploadFile
             catch { }
         }
 
+        static bool CheckFilmUploaded(IWebDriver driver, string movieName)
+        {
+            bool res = false;
+
+            driver.FindElement(By.XPath("//input[@placeholder='Search movie by name']")).Clear() ; Wait(1);
+            driver.FindElement(By.XPath("//input[@placeholder='Search movie by name']")).SendKeys(movieName + Keys.Enter); Wait(1);
+            var foundItemLocator = By.XPath($"//table/tbody/tr/td[2]//a[contains(.,'{movieName}')]");
+
+            try
+            {
+                driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
+                res = driver.FindElements(foundItemLocator).Count() > 0;
+            }
+            catch { }
+
+            return res;
+        }
+
         static void UploadMovie(IWebDriver driver, string movieFilePath, string srtFilePath
-            , string enName, string loName, string enDesc, string loDesc, string imgPath)
+            , string enName, string loName, string enDesc, string loDesc, string imgPathDoc, string imgPathNgang)
         {
             try
             {
                 // bam vao tab Movie
                 driver.FindElement(By.XPath("//a[.=' Movie ']")).Click(); Wait(1);
+
+                if (CheckFilmUploaded(driver, enName))
+                {
+                    return;
+                }
+
                 // bam vao nut Create
                 driver.FindElement(By.XPath("//*[@id='custom-css']/my-app/div/header/my-header/div/div/div[2]/my-button/button/span")).Click(); Wait(1);
                 // bam vao chon Movie
@@ -232,11 +270,31 @@ namespace TMeadiaUploadFile
                 IWebElement filmOverviewinLao = driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/my-movie-form/div/div[1]/div/div[2]/section/div[1]/div[3]/textarea"));
                 filmOverviewinLao.Clear();
                 filmOverviewinLao.SendKeys(loDesc);
-                Wait(5);
+                Wait(1);
+
+                // Nhap anh dai dien tren tab Image Management
+                driver.FindElement(By.XPath("//button[.='Image Management']")).Click();
+                Wait(1);
+
+                // upload image cho cac ngon ngu
+                foreach (var lang in "EN-US,LAOS".Split(','))
+                {
+                    driver.FindElement(By.XPath($"//button[@class='language-toggle__btn' and .=' {lang} ']")).Click();
+                    if (File.Exists(imgPathDoc))
+                    {
+                        UploadImgFile(driver, imgPathDoc, "poster");
+                        UploadImgFile(driver, imgPathDoc, "logo");
+                    }
+
+                    if (File.Exists(imgPathNgang))
+                    {
+                        UploadImgFile(driver, imgPathNgang, "thumbnail");
+                    }
+                }
 
                 // Bam nut tiep theo
                 driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/footer/button[2]")).Click();
-                Wait(1);
+                Wait(10);
 
                 UploadVideoFile(driver, movieFilePath);
                 if (srtFilePath != "")
@@ -244,7 +302,11 @@ namespace TMeadiaUploadFile
                     UploadSrtFile(driver, srtFilePath);
                 }
 
+                driver.FindElement(By.XPath("//*[@id='content']/div/ng-component/div/footer/button[2]")).Click();
+                Wait(1);
+
                 driver.FindElement(By.XPath("//button[.= 'Submit for review']")).Click();
+                File.WriteAllText("phim_da_up.txt", DateTime.Now + ":\t" + movieFilePath + "\n");
                 Thread.Sleep(2000);
             }
             catch (Exception ex)
@@ -256,6 +318,8 @@ namespace TMeadiaUploadFile
 
         static void UploadVideoFile(IWebDriver driver, string filePath)
         {
+            Thread.Sleep(10000);
+
             try
             {
                 // 2. Tìm thẻ input file ẩn trên giao diện
@@ -270,12 +334,16 @@ namespace TMeadiaUploadFile
                 Thread.Sleep(10000);
 
                 var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(filePath)}']");
-                for (int i = 0; i < 200; i++)
+                for (int i = 0; i < 5000; i++)
                 {
-                    if (driver.FindElement(uploadedFileLocator) != null)
+                    try
                     {
-                        break;
+                        driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
+                        if (driver.FindElements(uploadedFileLocator).Count() > 0)
+                            break;
                     }
+                    catch { }
+
                     Wait(1);
                 }
 
@@ -317,6 +385,40 @@ namespace TMeadiaUploadFile
             }
         }
 
+        // imageType: logo, thumbnail, poster
+        static void UploadImgFile(IWebDriver driver, string imgFullFilePath, string imgType)
+        {
+            try
+            {
+                string imageClass = "image-field--logo";
+                if (imgType == "thumbnail") imageClass = "image-field--thumbnail";
+                if (imgType == "poster") imageClass = "image-field--poster";
+                var imageFileInputs = driver.FindElements(By.XPath($"//div[contains(@class,'{imageClass}')]//input[@type='file' and @accept='image/*']")).Take(1);
+                foreach (IWebElement fileInput in imageFileInputs)
+                {
+                    fileInput.SendKeys(imgFullFilePath);
+                    Wait(1);
 
+                    var uploadedFileLocator = By.XPath($"//div[contains(@class,'{imageClass}')]//img");
+                    for (int i = 0; i < 200; i++)
+                    {
+                        try
+                        {
+                            if (driver.FindElement(uploadedFileLocator) != null)
+                            {
+                                break;
+                            }
+                        }
+                        catch { }
+                        Wait(1);
+                    }
+                    Wait(2);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+            }
+        }
     }
 }
