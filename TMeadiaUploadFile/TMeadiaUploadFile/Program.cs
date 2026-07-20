@@ -1,5 +1,6 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.DevTools.V147.Runtime;
 using OpenQA.Selenium.Support.UI;
 using SeleniumExtras.WaitHelpers;
 using System;
@@ -16,20 +17,19 @@ namespace TMeadiaUploadFile
     {
         static void Main(string[] args)
         {
-
-            string[] fileToUploads = File.ReadAllLines("C:\\temp\\movie_to_upload.txt");
+            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt");
 
             // Luu y : file anh la \\msi\voice_storage\movie_images
-
             IWebDriver driver = new ChromeDriver();
             driver.Manage().Window.Maximize();
+            IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
 
             try
             {
                 // multiple steps to go to upload movie page
                 Login(driver);
 
-                for (int i = 25; i < fileToUploads.Length; i++)
+                for (int i = 1; i < fileToUploads.Length; i++)
                 {
                     // create new record with metadata then upload video/srt file
                     var fileToUpload = fileToUploads[i];
@@ -44,8 +44,10 @@ namespace TMeadiaUploadFile
                     string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imgName);
                     string imgPathDoc = imgPath[0];
                     string imgPathNgang = imgPath[1];
-                    string srtFile = LocateSrtByMp4File(mp4File);
-                    UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
+                    //string srtFile = LocateSrtByMp4File(mp4File);
+
+                    //UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
+                    UploadSeries(driver, js, enName, loName);
                 }
 
             }
@@ -104,6 +106,38 @@ namespace TMeadiaUploadFile
             return res;
         }
 
+        static string[] LocateAllMp4ByMovieName(string movieName)
+        {
+            if (allMovieDirectories.Count == 0)
+            {
+                foreach (string rootMovieFolder in rootMovieFolders)
+                {
+                    var movies = Directory.GetDirectories(rootMovieFolder);
+                    allMovieDirectories.AddRange(movies);
+                }
+            }
+
+            foreach (string existedMovie in allMovieDirectories)
+            {
+                if (KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
+                    KeepSpaceAndAlphanumeric(movieName))
+                {
+                    // found the expected movie
+                    var mp4Files = Directory.GetFiles(existedMovie, "*.mp4", SearchOption.AllDirectories);
+                    if (mp4Files.Count() > 0)
+                    {
+                        return mp4Files;
+                    }
+                    else
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            return new string[0];
+        }
+
         static string LocateSrtByMp4File(string mp4File)
         {
             string res = "";
@@ -112,6 +146,25 @@ namespace TMeadiaUploadFile
             if (srtFiles.Count() > 0)
             {
                 res = srtFiles[0];
+            }
+            return res;
+        }
+
+        static string[] LocateEnLoSrtByMp4File(string mp4File)
+        {
+            string[] res = new string[2];
+            string movieFolder = Path.GetDirectoryName(mp4File);
+
+            var srtFiles = Directory.GetFiles(movieFolder, "*.English.srt");
+            if (srtFiles.Count() > 0)
+            {
+                res[0] = srtFiles[0];
+            }
+
+            srtFiles = Directory.GetFiles(movieFolder, "*.lo.srt");
+            if (srtFiles.Count() > 0)
+            {
+                res[1] = srtFiles[0];
             }
             return res;
         }
@@ -177,10 +230,10 @@ namespace TMeadiaUploadFile
             IWebElement managerButton = driver.FindElement(By.XPath("//flt-semantics[.='Manager']"));
             managerButton.Click(); Wait(5);
 
-            driver.Navigate().GoToUrl("https://crm.laoid.net/v2/main/company/services/list");
+            driver.Navigate().GoToUrl("https://crm.laoid.net/v2/main/company/services/list"); Wait(2);
 
             //js.ExecuteScript("arguments[0].click();", driver.FindElement(By.XPath("//flt-semantics-placeholder[@aria-label='Enable accessibility']"))); Wait(1);    // <== bam vao button an de enable fluter sinh the html cho cac element
-            EnableFluterHtmlElement(driver, js);
+            EnableFluterHtmlElement(driver, js); Wait(2);
             driver.FindElement(By.Id("flt-semantic-node-11")).Click(); Wait(3);
             driver.FindElement(By.XPath("//flt-semantics[@aria-label='Lao Social (business)']")).Click();
             driver.FindElement(By.XPath("//flt-semantics[.='Login to Lao Social']")).Click();
@@ -209,7 +262,7 @@ namespace TMeadiaUploadFile
         {
             bool res = false;
 
-            driver.FindElement(By.XPath("//input[@placeholder='Search movie by name']")).Clear() ; Wait(1);
+            driver.FindElement(By.XPath("//input[@placeholder='Search movie by name']")).Clear(); Wait(1);
             driver.FindElement(By.XPath("//input[@placeholder='Search movie by name']")).SendKeys(movieName + Keys.Enter); Wait(1);
             var foundItemLocator = By.XPath($"//table/tbody/tr/td[2]//a[contains(.,'{movieName}')]");
 
@@ -418,6 +471,173 @@ namespace TMeadiaUploadFile
             catch (Exception ex)
             {
                 Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+            }
+        }
+
+        //static void UploadFile()
+        //{
+        //    string[] fileToUploads = File.ReadAllLines("C:\\temp\\movie_to_upload.txt");
+
+        //    // Luu y : file anh la \\msi\voice_storage\movie_images
+
+        //    IWebDriver driver = new ChromeDriver();
+        //    driver.Manage().Window.Maximize();
+
+        //    try
+        //    {
+        //        // multiple steps to go to upload movie page
+        //        Login(driver);
+
+        //        for (int i = 25; i < fileToUploads.Length; i++)
+        //        {
+        //            // create new record with metadata then upload video/srt file
+        //            var fileToUpload = fileToUploads[i]; // khai báo mảng : Các file cần tải về
+        //            var items = fileToUpload.Split('\t'); // các đề mục phải biệt lập
+        //            string orgName = items[0]; // tên gốc
+        //            string enName = items[1]; // tên Anh
+        //            string loName = items[2]; // tên Lào
+        //            string enDesc = items[3]; // tóm tắt bằng tiếng Anh
+        //            string loDesc = items[4]; // tóm tắt bằng tiếng Lào
+        //            string imgName = items[5]; // áp phích
+        //            var mp4File = LocateMp4ByMovieName(orgName); // 
+        //            string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imgName);
+        //            string imgPathDoc = imgPath[0];
+        //            string imgPathNgang = imgPath[1];
+        //            string srtFile = LocateSrtByMp4File(mp4File);
+        //            UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
+        //    }
+        //}
+
+        public static void UploadSeries(IWebDriver driver, IJavaScriptExecutor js, string movieName, string newName, string imageName = "")
+        {
+            try
+            {
+                // XPath dành cho phim bộ : //a[text()='Series']
+                driver.FindElement(By.XPath("//a[text()=' Series ']")).Click();
+                Thread.Sleep(1000);
+
+                // Lệnh tìm kiếm tên phim dựa theo Xpath : //*[@id="content"]/div/ng-component/div/my-video-channel-tv/div/my-video-channel-metadata-table/div[2]/div[1]/input
+                IWebElement searchInput = driver.FindElement(By.XPath("//input[@placeholder='Search series by name']"));
+                searchInput.SendKeys(newName + Keys.Enter); Wait(5);
+                //EnableFluterHtmlElement(driver, js); Wait(2);
+
+                // Kết quả thu được ://*[@id="pn_id_1-table"]/tbody/tr/td[2]/div/span/a
+                // bam vao dong dau tien tim thay
+                var foundItemLocator = By.XPath($"//tr/td[2]/div/span/a[text()=' {newName} ']");
+                var foundItems = driver.FindElements(foundItemLocator);
+                if (foundItems.Count == 1)
+                {
+                    foundItems.First().Click();
+                }
+                else if (foundItems.Count == 0)
+                {
+                    File.AppendAllText("chua_co_film.txt", newName + "\n");
+                }
+                else
+                {
+                    File.AppendAllText("tim_thay_nhieu_film.txt", newName + "\n");
+                }
+
+            }
+            catch (Exception ex)
+            {
+            }
+
+            IWebElement EditButton = driver.FindElement(By.XPath("//span[.='Edit']"));
+            EditButton.Click();
+
+            // lay ve danh sach cac file video trong thu muc phim movie name
+            var mp4Files = LocateAllMp4ByMovieName(movieName);
+
+            foreach (var mp4Path in mp4Files)
+            {
+                IWebElement episodesTab = driver.FindElement(By.XPath("//button[.='Episodes']"));
+                episodesTab.Click();
+
+                IWebElement AddEp = driver.FindElement(By.XPath("//span[.=' + Add Episode ']"));
+                AddEp.Click();
+
+                // tim duogn dan image doc va ngang theo ten phim hoac ten image
+                string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imageName == "" ? newName : imageName);
+                string imgPathDoc = imgPath[0];
+                string imgPathNgang = imgPath[1];
+
+                // tim phu de tieng anh va tieng lao theo file mp4
+                string[] srtFiles = LocateEnLoSrtByMp4File(mp4Path);
+                string enSrtPath = srtFiles[0];
+                string loSrtPath = srtFiles[1];
+
+                UploadAnEpisode(driver, js, mp4Path, enSrtPath, loSrtPath, imgPathDoc, imgPathNgang);
+            }
+        }
+
+        static void UploadAnEpisode(IWebDriver driver, IJavaScriptExecutor js, string mp4Path, string enSrtPath, string loSrtPath, string imgPathDoc, string imgPathNgang)
+        {
+            try
+            {
+
+                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"_S\d+E(\d+)").Groups[1].Value);
+                //  nhap tieu de tap (thi du : Episode 1)
+                // XPath de nhap tieu de tap la //*[@id="content"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[1]/input
+                IWebElement EpTitle = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[1]/input"));
+                EpTitle.SendKeys($"Episode {episodeIndex}");
+                //  nhap so thu tu tap (thi du : 1)
+                IWebElement EpNumber = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[2]/input"));
+                EpNumber.SendKeys(episodeIndex.ToString());
+                //  nhap episode type (normal)
+                IWebElement EpType = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[3]/select"));
+                EpType.Click();
+                // Chon normal
+                IWebElement EpTypeSelect = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[3]/select/option[2]"));
+                EpTypeSelect.Click();
+                //  nhap thoi luong (thi du : 120 mins) - lay tu file mp4
+                IWebElement Duration = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[5]/input"));
+                Duration.SendKeys("120");
+
+                // Nhap anh dai dien tren tab Image Management
+                driver.FindElement(By.XPath("//button[.='Image Management']")).Click();
+                Wait(1);
+
+                if (File.Exists(imgPathDoc))
+                {
+                    UploadImgFile(driver, imgPathDoc, "poster");
+                    UploadImgFile(driver, imgPathDoc, "logo");
+                }
+
+                if (File.Exists(imgPathNgang))
+                {
+                    UploadImgFile(driver, imgPathNgang, "thumbnail");
+                }
+
+
+                // Bam nut tiep theo
+                driver.FindElement(By.XPath("//button[.=' Next → ']")).Click();
+                Wait(2);
+
+                UploadVideoFile(driver, mp4Path);
+
+                // Bam nut tiep theo
+                driver.FindElement(By.XPath("//button[.=' Next → ']")).Click();
+                Wait(2);
+
+                driver.FindElement(By.XPath("//option[.='English']")).Click();
+                UploadSrtFile(driver, enSrtPath);
+                driver.FindElement(By.XPath("//option[.='Lao']")).Click();
+                UploadSrtFile(driver, loSrtPath);
+
+                driver.FindElement(By.XPath("//button[.=' Next → ']")).Click();
+                Wait(2);
+                driver.FindElement(By.XPath("//button[.='Submit for review']")).Click();
+                Wait(2);
+            }
+            catch
+            {
+
             }
         }
     }
