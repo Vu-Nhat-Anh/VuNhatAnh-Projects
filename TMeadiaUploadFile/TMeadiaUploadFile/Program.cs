@@ -574,6 +574,9 @@ namespace TMeadiaUploadFile
 
                 UploadAnEpisode(driver, js, mp4Path, enSrtPath, loSrtPath, imgPathDoc, imgPathNgang);
             }
+
+            // back lai man hinh list series
+            driver.FindElement(By.XPath("//button[.=' Back ']")).Click();
         }
 
         static void UploadAnEpisode(IWebDriver driver, IJavaScriptExecutor js, string mp4Path, string enSrtPath, string loSrtPath, string imgPathDoc, string imgPathNgang)
