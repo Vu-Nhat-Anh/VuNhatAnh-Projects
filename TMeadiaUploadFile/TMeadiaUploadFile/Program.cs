@@ -17,7 +17,7 @@ namespace TMeadiaUploadFile
     {
         static void Main(string[] args)
         {
-            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt").Reverse().ToArray();
+            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt");
 
             // Luu y : file anh la \\msi\voice_storage\movie_images
             IWebDriver driver = new ChromeDriver();
@@ -386,7 +386,11 @@ namespace TMeadiaUploadFile
                 // Bạn nên nâng thời gian chờ hoặc dùng WebDriverWait để theo dõi cho tới khi nút "Next" sáng lên.
                 Thread.Sleep(10000);
 
-                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(filePath)}']");
+                //var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(filePath)}']");
+                string fileName = Path.GetFileName(filePath);
+                string safeFileName = ToXPathLiteral(fileName);
+                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .= {safeFileName}]");
+
                 for (int i = 0; i < 5000; i++)
                 {
                     try
@@ -408,6 +412,22 @@ namespace TMeadiaUploadFile
             {
                 Console.WriteLine("Lỗi khi upload file: " + ex.Message);
             }
+        }
+
+        public static string ToXPathLiteral(string text)
+        {
+            // If there are no single quotes, wrapping in single quotes is fine
+            if (!text.Contains("'"))
+                return $"'{text}'";
+
+            // If there are no double quotes, wrap in double quotes
+            if (!text.Contains("\""))
+                return $"\"{text}\"";
+
+            // If it contains BOTH single and double quotes, split and join with concat()
+            var parts = text.Split('\'');
+            var concatArgs = string.Join(", \"'\", ", parts.Select(p => $"'{p}'"));
+            return $"concat({concatArgs})";
         }
 
         static void UploadSrtFile(IWebDriver driver, string srtFullFilePath)
@@ -573,7 +593,11 @@ namespace TMeadiaUploadFile
                     //driver.FindElement(By.XPath("//button[.=' Back ']")).Click();return;
                     if (uploadedEpisodes.Count() == 0)
                     {
-                        uploadedEpisodes = driver.FindElements(By.CssSelector("td.ep-name")).Select(el => el.Text).ToArray();
+                        try
+                        {
+                            uploadedEpisodes = driver.FindElements(By.CssSelector("td.ep-name")).Select(el => el.Text).ToArray();
+                        }
+                        catch { }
                     }
                     if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
                     {
