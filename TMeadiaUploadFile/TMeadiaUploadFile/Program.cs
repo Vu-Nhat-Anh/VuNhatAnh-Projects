@@ -17,7 +17,7 @@ namespace TMeadiaUploadFile
     {
         static void Main(string[] args)
         {
-            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt");
+            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt").Reverse().ToArray();
 
             // Luu y : file anh la \\msi\voice_storage\movie_images
             IWebDriver driver = new ChromeDriver();
@@ -553,26 +553,49 @@ namespace TMeadiaUploadFile
 
             // lay ve danh sach cac file video trong thu muc phim movie name
             var mp4Files = LocateAllMp4ByMovieName(movieName);
+            string[] uploadedEpisodes = new string[] { };
 
             foreach (var mp4Path in mp4Files)
             {
-                IWebElement episodesTab = driver.FindElement(By.XPath("//button[.='Episodes']"));
-                episodesTab.Click();
+                try
+                {
+                    int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"_S\d+E(\d+)").Groups[1].Value);
+                    if (uploadedEpisodes.Count() > 0)
+                    {
+                        if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
+                        {
+                            continue;   // file was uploaded, skip
+                        }
+                    }
 
-                IWebElement AddEp = driver.FindElement(By.XPath("//span[.=' + Add Episode ']"));
-                AddEp.Click();
+                    IWebElement episodesTab = driver.FindElement(By.XPath("//button[.='Episodes']"));
+                    episodesTab.Click(); Wait(1);
+                    //driver.FindElement(By.XPath("//button[.=' Back ']")).Click();return;
+                    if (uploadedEpisodes.Count() == 0)
+                    {
+                        uploadedEpisodes = driver.FindElements(By.CssSelector("td.ep-name")).Select(el => el.Text).ToArray();
+                    }
+                    if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
+                    {
+                        continue;   // file was uploaded, skip
+                    }
 
-                // tim duogn dan image doc va ngang theo ten phim hoac ten image
-                string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imageName == "" ? newName : imageName);
-                string imgPathDoc = imgPath[0];
-                string imgPathNgang = imgPath[1];
+                    IWebElement AddEp = driver.FindElement(By.XPath("//span[.=' + Add Episode ']"));
+                    AddEp.Click();
 
-                // tim phu de tieng anh va tieng lao theo file mp4
-                string[] srtFiles = LocateEnLoSrtByMp4File(mp4Path);
-                string enSrtPath = srtFiles[0];
-                string loSrtPath = srtFiles[1];
+                    // tim duogn dan image doc va ngang theo ten phim hoac ten image
+                    string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imageName == "" ? newName : imageName);
+                    string imgPathDoc = imgPath[0];
+                    string imgPathNgang = imgPath[1];
 
-                UploadAnEpisode(driver, js, mp4Path, enSrtPath, loSrtPath, imgPathDoc, imgPathNgang);
+                    // tim phu de tieng anh va tieng lao theo file mp4
+                    string[] srtFiles = LocateEnLoSrtByMp4File(mp4Path);
+                    string enSrtPath = srtFiles[0];
+                    string loSrtPath = srtFiles[1];
+
+                    UploadAnEpisode(driver, js, mp4Path, enSrtPath, loSrtPath, imgPathDoc, imgPathNgang);
+                }
+                catch { }
             }
 
             // back lai man hinh list series
@@ -583,7 +606,6 @@ namespace TMeadiaUploadFile
         {
             try
             {
-
                 int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"_S\d+E(\d+)").Groups[1].Value);
                 //  nhap tieu de tap (thi du : Episode 1)
                 // XPath de nhap tieu de tap la //*[@id="content"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[1]/input
