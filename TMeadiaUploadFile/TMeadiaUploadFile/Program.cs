@@ -31,25 +31,31 @@ namespace TMeadiaUploadFile
 
                 for (int i = 1; i < fileToUploads.Length; i++)
                 {
-                    // create new record with metadata then upload video/srt file
-                    var fileToUpload = fileToUploads[i];
-                    var items = fileToUpload.Split('\t');
-                    string orgName = items[0];
-                    string enName = items[1];
-                    string loName = items[2];
-                    string enDesc = items[3];
-                    string loDesc = items[4];
-                    string imgName = items[5];
-                    var mp4File = LocateMp4ByMovieName(orgName);
-                    string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imgName);
-                    string imgPathDoc = imgPath[0];
-                    string imgPathNgang = imgPath[1];
-                    //string srtFile = LocateSrtByMp4File(mp4File);
+                    try
+                    {
+                        // create new record with metadata then upload video/srt file
+                        var fileToUpload = fileToUploads[i];
+                        var items = fileToUpload.Split('\t');
+                        string orgName = items[0];
+                        string enName = items[1];
+                        string loName = items[2];
+                        string enDesc = items[3];
+                        string loDesc = items[4];
+                        string imgName = items[5];
+                        var mp4File = LocateMp4ByMovieName(orgName);
+                        string[] imgPath = GetImagePathByMovieName(@"\\msi\voice_storage\movie_images", imgName);
+                        string imgPathDoc = imgPath[0];
+                        string imgPathNgang = imgPath[1];
+                        //string srtFile = LocateSrtByMp4File(mp4File);
 
-                    //UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
-                    UploadSeries(driver, js, enName, loName);
+                        //UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
+                        UploadSeries(driver, js, enName, loName);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
+                    }
                 }
-
             }
             catch (Exception ex)
             {
@@ -538,7 +544,8 @@ namespace TMeadiaUploadFile
             try
             {
                 // XPath dành cho phim bộ : //a[text()='Series']
-                driver.FindElement(By.XPath("//a[text()=' Series ']")).Click();
+                //driver.FindElement(By.XPath("//a[text()=' Series ']")).Click();
+                driver.Navigate().GoToUrl("https://studio.laoid.net/c/root_channel/series");
                 Thread.Sleep(1000);
 
                 // Lệnh tìm kiếm tên phim dựa theo Xpath : //*[@id="content"]/div/ng-component/div/my-video-channel-tv/div/my-video-channel-metadata-table/div[2]/div[1]/input
