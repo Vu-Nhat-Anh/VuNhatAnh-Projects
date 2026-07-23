@@ -53,13 +53,13 @@ namespace TMeadiaUploadFile
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
+                        Console.WriteLine($"Đã xảy ra lỗi: {ex.Message} {ex.StackTrace}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
+                Console.WriteLine($"Đã xảy ra lỗi: {ex.Message} {ex.StackTrace}");
             }
         }
 
@@ -377,7 +377,7 @@ namespace TMeadiaUploadFile
 
         static void UploadVideoFile(IWebDriver driver, string filePath)
         {
-            Thread.Sleep(10000);
+            Thread.Sleep(20000);
 
             try
             {
@@ -416,7 +416,7 @@ namespace TMeadiaUploadFile
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+                Console.WriteLine("Lỗi khi upload file: " + ex.Message + ex.StackTrace);
             }
         }
 
@@ -444,7 +444,11 @@ namespace TMeadiaUploadFile
                 fileInput.SendKeys(srtFullFilePath);
                 Wait(1);
 
-                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(srtFullFilePath)}']");
+                //var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(srtFullFilePath)}']");
+                string fileName = Path.GetFileName(srtFullFilePath);
+                string safeFileName = ToXPathLiteral(fileName);
+                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .= {safeFileName}]");
+
                 for (int i = 0; i < 200; i++)
                 {
                     if (driver.FindElement(uploadedFileLocator) != null)
@@ -460,7 +464,7 @@ namespace TMeadiaUploadFile
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+                Console.WriteLine("Lỗi khi upload file: " + ex.Message + ex.StackTrace);
             }
         }
 
@@ -496,7 +500,7 @@ namespace TMeadiaUploadFile
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+                Console.WriteLine("Lỗi khi upload file: " + ex.Message + ex.StackTrace);
             }
         }
 
