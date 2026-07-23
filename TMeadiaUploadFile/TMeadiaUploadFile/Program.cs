@@ -447,14 +447,18 @@ namespace TMeadiaUploadFile
                 //var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .='{Path.GetFileName(srtFullFilePath)}']");
                 string fileName = Path.GetFileName(srtFullFilePath);
                 string safeFileName = ToXPathLiteral(fileName);
-                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .= {safeFileName}]");
+                var uploadedFileLocator = By.XPath($"//span[@class='file-name-display' and .= {safeFileName}] | //td[@class='subtitle-table__filename' and .= {safeFileName}]");
 
                 for (int i = 0; i < 200; i++)
                 {
-                    if (driver.FindElement(uploadedFileLocator) != null)
+                    try
                     {
-                        break;
+                        if (driver.FindElement(uploadedFileLocator) != null)
+                        {
+                            break;
+                        }
                     }
+                    catch { }
                     Wait(1);
                 }
 
