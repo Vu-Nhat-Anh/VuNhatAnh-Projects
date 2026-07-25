@@ -17,7 +17,7 @@ namespace TMeadiaUploadFile
     {
         static void Main(string[] args)
         {
-            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt");
+            string[] fileToUploads = File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\series_upload.txt").Reverse().ToArray();
 
             // Luu y : file anh la \\msi\voice_storage\movie_images
             IWebDriver driver = new ChromeDriver();
@@ -29,7 +29,7 @@ namespace TMeadiaUploadFile
                 // multiple steps to go to upload movie page
                 Login(driver);
 
-                for (int i = 1; i < fileToUploads.Length; i++)
+                for (int i = 0; i < fileToUploads.Length - 1; i++)
                 {
                     try
                     {
@@ -230,9 +230,9 @@ namespace TMeadiaUploadFile
             passwordField.SendKeys("Cungau@2008"); Wait(1);
 
             nextButton = driver.FindElement(By.XPath("//span[.='Next']"));
-            nextButton.Click(); Wait(1);
+            nextButton.Click(); Wait(5);
 
-            driver.SwitchTo().Window(originalTab); Wait(2);
+            driver.SwitchTo().Window(originalTab); Wait(5);
             IWebElement managerButton = driver.FindElement(By.XPath("//flt-semantics[.='Manager']"));
             managerButton.Click(); Wait(5);
 
@@ -561,6 +561,11 @@ namespace TMeadiaUploadFile
                 searchInput.SendKeys(newName + Keys.Enter); Wait(5);
                 //EnableFluterHtmlElement(driver, js); Wait(2);
 
+                if(movieName == "Luo Bao Bei")
+                {
+
+                }
+
                 // Kết quả thu được ://*[@id="pn_id_1-table"]/tbody/tr/td[2]/div/span/a
                 // bam vao dong dau tien tim thay
                 var foundItemLocator = By.XPath($"//tr/td[2]/div/span/a[text()=' {newName} ']");
@@ -587,14 +592,14 @@ namespace TMeadiaUploadFile
             EditButton.Click();
 
             // lay ve danh sach cac file video trong thu muc phim movie name
-            var mp4Files = LocateAllMp4ByMovieName(movieName);
+            var mp4Files = LocateAllMp4ByMovieName(movieName).Reverse().ToArray();
             string[] uploadedEpisodes = new string[] { };
 
             foreach (var mp4Path in mp4Files)
             {
                 try
                 {
-                    int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"_S\d+E(\d+)").Groups[1].Value);
+                    int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value);
                     if (uploadedEpisodes.Count() > 0)
                     {
                         if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
@@ -604,9 +609,9 @@ namespace TMeadiaUploadFile
                     }
 
                     IWebElement episodesTab = driver.FindElement(By.XPath("//button[.='Episodes']"));
-                    episodesTab.Click(); Wait(1);
+                    episodesTab.Click(); Wait(5);
                     //driver.FindElement(By.XPath("//button[.=' Back ']")).Click();return;
-                    if (uploadedEpisodes.Count() == 0)
+                    //if (uploadedEpisodes.Count() == 0)
                     {
                         try
                         {
@@ -645,7 +650,7 @@ namespace TMeadiaUploadFile
         {
             try
             {
-                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"_S\d+E(\d+)").Groups[1].Value);
+                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value);
                 //  nhap tieu de tap (thi du : Episode 1)
                 // XPath de nhap tieu de tap la //*[@id="content"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[1]/input
                 IWebElement EpTitle = driver.FindElement(By.XPath("//*[@id=\"content\"]/div/app-episode/div/div[3]/form/div[1]/div/div[2]/section[1]/div[2]/div[1]/input"));
