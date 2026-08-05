@@ -81,7 +81,7 @@ namespace TMeadiaUploadFile
 
         static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(',');
         static ArrayList allMovieDirectories = new ArrayList();
-        static string LocateMp4ByMovieName(string movieName)
+        static string LocateMp4ByMovieName(string movieName) // xác định đường dẫn chính xác của phim đó
         {
             string res = "";
             if (allMovieDirectories.Count == 0)
@@ -566,8 +566,8 @@ namespace TMeadiaUploadFile
             {
                 try
                 {
-                    int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value);
-                    if (uploadedEpisodes.Count() > 0)
+                    int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value); // Xác định số thứ tự tập phim dựa theo Biểu thức Chính quy
+                    if (uploadedEpisodes.Count() > 0) // Nếu như số tập đã up rồi thì sẽ bỏ qua (continue)
                     {
                         if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
                         {
@@ -576,7 +576,7 @@ namespace TMeadiaUploadFile
                     }
 
                     IWebElement episodesTab = driver.FindElement(By.XPath("//button[.='Episodes']"));
-                    episodesTab.Click();
+                    episodesTab.Click(); // bấm vào nút thêm tập
                     {
                         try
                         {
@@ -584,12 +584,12 @@ namespace TMeadiaUploadFile
                         }
                         catch { }
                     }
-                    if (uploadedEpisodes.Contains($"Episode {episodeIndex}"))
+                    if (uploadedEpisodes.Contains($"Episode {episodeIndex}")) // Nếu đã có tập được đưa vào thì bỏ qua
                     {
                         continue;   // file was uploaded, skip
                     }
 
-                    IWebElement AddEp = driver.FindElement(By.XPath("//span[.=' + Add Episode ']"));
+                    IWebElement AddEp = driver.FindElement(By.XPath("//span[.=' + Add Episode ']")); //Thêm t
                     AddEp.Click();
 
                     // tim duogn dan image doc va ngang theo ten phim hoac ten image
