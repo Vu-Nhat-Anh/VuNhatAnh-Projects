@@ -2,6 +2,7 @@
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 
@@ -77,21 +78,22 @@ class Program
                         continue;
                     }
 
-                    wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
-                    Console.WriteLine("--> Chuyển sang giao diện Media Upload > Upload Film Series");
-                    IWebElement mediaUpload = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Upload']")));
-                    mediaUpload.Click();
-
-                    IWebElement uploadFilmSeries = wait.Until(d => d.FindElement(By.XPath("//span[.='Upload Film Series']")));
-                    uploadFilmSeries.Click();
-
-                    TaiVideoPhim(driver, wait);
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Đã xảy ra lỗi: {ex.Message} {ex.StackTrace}");
                 }
             }
+
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
+            Console.WriteLine("--> Chuyển sang giao diện Media Upload > Upload Film Series");
+            IWebElement mediaUpload = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Upload']")));
+            mediaUpload.Click();
+
+            IWebElement uploadFilmSeries = wait.Until(d => d.FindElement(By.XPath("//span[.='Upload Film Series']")));
+            uploadFilmSeries.Click();
+
+            TaiVideoPhim(driver, wait, tenAnh, videoName);
         }
         catch (Exception ex)
         {
@@ -293,11 +295,57 @@ class Program
         }
     }
 
-    static void TaiVideoPhim(IWebDriver driver, WebDriverWait wait)
+    static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(','); // Thư mục chứa phim
+    static ArrayList allMovieDirectories = new ArrayList();
+    static string LocateMp4ByMovieName(string movieName)
+    {
+        string res = "";
+        if (allMovieDirectories.Count == 0)
+        {
+            foreach (string rootMovieFolder in rootMovieFolders)
+            {
+                var movies = Directory.GetDirectories(rootMovieFolder);
+                allMovieDirectories.AddRange(movies);
+            }
+        }
+
+        foreach (string existedMovie in allMovieDirectories)
+        {
+            if (KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
+                KeepSpaceAndAlphanumeric(movieName))
+            {
+                // found the expected movie
+                var mp4Files = Directory.GetFiles(existedMovie, "*.mp4");
+                if (mp4Files.Count() > 0)
+                {
+                    res = mp4Files[0];
+                    break;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+        }
+
+        return res;
+    }
+
+    static void TaiVideoPhim(IWebDriver driver, WebDriverWait wait, string tenAnh, string videoName = "")
     {
         try
         {
-            IWebElement createFilmSeries = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"mainGridPjax\"]/div[1]/div[1]/div[2]/div/a")));
+            IWebElement createFilmSeries = driver.FindElement(By.XPath("//*[@id=\"mainGridPjax\"]/div[1]/div[1]/div[2]/div/a")); //Nút Create Film Series
+            createFilmSeries.Click();
+
+            System.Threading.Thread.Sleep(20000); // Đợi trong thời gian 20 giây
+
+            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"video_upload\"]/div/div/div[2]/input"))); // Nút bấm tải video file
+            uploadVideoFile.Click();
+
+            string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tenAnh : videoName;
+            string folderPath = @"C:/Tải phim/Phim Bộ Hàn";
+
 
         }
         catch (Exception ex)
