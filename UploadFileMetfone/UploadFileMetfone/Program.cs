@@ -5,79 +5,101 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Xml.Linq;
 
 class Program
 {
     // --- HÀM 1: HÀM MAIN (LUÔN CHẠY ĐẦU TIÊN) ---
+    static IWebDriver driver = null;
     static void Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         Console.InputEncoding = System.Text.Encoding.UTF8;
 
         // Khởi tạo trình duyệt thực tế
-        IWebDriver driver = new ChromeDriver();
+        // IWebDriver driver = new ChromeDriver();
+        InitDriver();
         driver.Manage().Window.Maximize();
 
         try
         {
-            // Gọi hàm đăng nhập và truyền trình duyệt vào
-            Login(driver);
-
             var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
+            //IWebElement mediaMetainfoButtonElement = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Metainfo']")));
+            //mediaMetainfoButtonElement.Click();
 
-            IWebElement mediaMetainfoButtonElement = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Metainfo']")));
-            mediaMetainfoButtonElement.Click();
+            //IWebElement filmSeriesElement = wait.Until(d => d.FindElement(By.XPath("//span[.='Series Movies']")));
+            //filmSeriesElement.Click();
 
-            IWebElement filmSeriesElement = wait.Until(d => d.FindElement(By.XPath("//span[.='Series Movies']")));
-            filmSeriesElement.Click();
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
+            Console.WriteLine("--> Chuyển sang giao diện Media Upload > Upload Film Series");
+            IWebElement mediaUpload = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Upload']")));
+            mediaUpload.Click();
 
-            string[] fileToUploads = System.IO.File.ReadAllLines("C:\\lam_phim\\danh_sach_phim.txt").Reverse().ToArray();
-            for (int i = 0; i < fileToUploads.Length; i++)
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(1));
+            IWebElement uploadFilmSeries = wait.Until(d => d.FindElement(By.XPath("//span[.='Upload Film Series']")));
+            uploadFilmSeries.Click();
+
+            string[] movieToUploads = System.IO.File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\metfone_series_upload.txt").Reverse().ToArray();
+            string[] allMovieFolders = System.IO.File.ReadAllLines("C:\\scripts\\list_movies.txt").Reverse().ToArray();
+            Dictionary<string, string> dictAllMovies = new Dictionary<string, string>();
+            foreach (var movieFolder in allMovieFolders)
             {
+                var movieName = Path.GetFileName(movieFolder);
+                if (!dictAllMovies.ContainsKey(movieName)) dictAllMovies.Add(movieName, movieFolder);
+            }
+
+            // duyet tung phim trong danh sach lay tu file text
+            for (int i = 0; i < movieToUploads.Length; i++)
+            {
+                // lay ve cac gia tri ten phim, ten phim moi tu moi dong trong file (Số TT	Tên phim gốc	Tên tiếng anh trên CMS	Tên tiếng Lào trên CMS	Mô tả anh	Mô tả Lào	Tên ảnh (ngang/dọc))
+                var movieToUpload = movieToUploads[i];
+                if (string.IsNullOrWhiteSpace(movieToUpload)) continue;
+                var items = movieToUpload.Split('\t');
+
+                string STT = items[0];
+                string tengoc = items[1];
+                string tendoilai = items[2];
+                string tenKhmer = items[3];
+                string motaKhmer = items[4];
+                string sotap = items[5];
+                string imageFile = items[7];
+                if (!dictAllMovies.ContainsKey(tengoc)) continue;    // the movieName was not found
+
                 try
                 {
-                    // lay ve cac gia tri ten phi, ten phim moi tu moi dong trong file (Số TT	Tên phim gốc	Tên tiếng anh trên CMS	Tên tiếng Lào trên CMS	Mô tả anh	Mô tả Lào	Tên ảnh (ngang/dọc))
-                    var fileToUpload = fileToUploads[i];
-                    if (string.IsNullOrWhiteSpace(fileToUpload)) continue;
-                    var items = fileToUpload.Split('\t');
-                    string STT = items[0];
-                    string tenViet = items[1];
-                    string tenAnh = items[2];
-                    string sotap = items[3];
-                    string tenKhmer = items[4];
-                    string motaKhmer = items[5];
+                    string movieFolder = dictAllMovies[tengoc];  // lay ve thu muc chua phim
+                    var fileToUploads = Directory.GetFiles(movieFolder, "*.mp4", SearchOption.AllDirectories);  // lay dach sach file phim (mp4) trong thu muc chua phim
 
-                    // Lưu ý file ảnh là C:\Users\hivu\Downloads\Ảnh poster Bplus.zip\Ảnh poster Bplus
-
-                    //UploadMovie(driver, mp4File, srtFile, enName, loName, enDesc, loDesc, imgPathDoc, imgPathNgang);
-                    IWebElement searchFilm = driver.FindElement(By.XPath("//*[@id=\"w0-filters\"]/td[3]/input")); // Ô input tìm theo tên phim
-                    searchFilm.Clear();
-                    System.Threading.Thread.Sleep(5000);
-                    searchFilm = driver.FindElement(By.XPath("//*[@id=\"w0-filters\"]/td[3]/input"));
-                    searchFilm.SendKeys(tenAnh);
-                    searchFilm.SendKeys(Keys.Enter);
-                    System.Threading.Thread.Sleep(2000);
-                    var results = driver.FindElements(By.CssSelector("#w0 > div.table-responsive > table > tbody > tr:nth-child(1)"));
-
-                    if (results.Count == 0)
+                    // duyet tung tap phim
+                    for (int j = 0; j < fileToUploads.Length; j++)
                     {
                         try
                         {
-                            taoVoPhim(driver, wait, tenAnh, sotap, motaKhmer);
-                            IWebElement createMovies = wait.Until(d => d.FindElement(By.XPath("//button[text()='Create']"))); // Button tạo vỏ phim
-                            createMovies.Click();
-                        }
+                            string fileToUpload = fileToUploads[j];
+                            string epName = Path.GetFileName(fileToUpload);
 
+                            IWebElement searchFilm = driver.FindElement(By.XPath("//*[@id=\"csm_media_grid-filters\"]/td[4]/input"));
+                            searchFilm.Click(); searchFilm.Clear(); System.Threading.Thread.Sleep(500);
+                            searchFilm = driver.FindElement(By.XPath("//*[@id=\"csm_media_grid-filters\"]/td[4]/input"));
+                            searchFilm.SendKeys(epName + Keys.Enter); System.Threading.Thread.Sleep(2000);
+                            var results = driver.FindElements(By.XPath("//tbody/tr[@role='row']"));
+
+                            if (!results.Any())
+                            {
+                                UploadAnEpisode(driver, wait, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile);
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Đã upload : {epName}");
+                                continue;
+                            }
+                        }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"Đã xảy ra lỗi : {ex}");
+                            Console.WriteLine($"Đã xảy ra lỗi: {ex.Message} {ex.StackTrace}");
                         }
-                    }
-                    else
-                    {
-                        continue;
-                    }
 
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -85,15 +107,7 @@ class Program
                 }
             }
 
-            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(60));
-            Console.WriteLine("--> Chuyển sang giao diện Media Upload > Upload Film Series");
-            IWebElement mediaUpload = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Upload']")));
-            mediaUpload.Click();
 
-            IWebElement uploadFilmSeries = wait.Until(d => d.FindElement(By.XPath("//span[.='Upload Film Series']")));
-            uploadFilmSeries.Click();
-
-            TaiVideoPhim(driver, wait, tenAnh, videoName);
         }
         catch (Exception ex)
         {
@@ -109,7 +123,7 @@ class Program
         string cleanMovieName = KeepSpaceAndAlphanumeric(movieName).Trim();
 
         // Lấy tất cả file bắt đầu bằng movieName (không quan tâm đuôi file)
-        var files = Directory.GetFiles(folderPath, "*.png");
+        var files = Directory.GetFiles(folderPath, "*.png", SearchOption.AllDirectories);
 
         foreach (string filePath in files)
         {
@@ -121,12 +135,12 @@ class Program
             if (cleanFileName.Contains(cleanMovieName))
             {
                 // Kiểm tra chứa từ khóa ảnh ngang
-                if (cleanFileName.Contains("hor") || cleanFileName.Contains("landscape")) //Chua chu hor HOAC landscape
+                if (cleanFileName.Contains("hor") || cleanFileName.Contains("landscape") || cleanFileName.Contains("ngang")) //Chua chu hor HOAC landscape
                 {
                     res[0] = filePath;
                 }
                 // Kiểm tra chứa từ khóa ảnh dọc
-                else if (cleanFileName.Contains("ver") || cleanFileName.Contains("portrait"))
+                else if (cleanFileName.Contains("ver") || cleanFileName.Contains("portrait") || cleanFileName.Contains("dọc"))
                 {
                     res[1] = filePath;
                 }
@@ -135,8 +149,6 @@ class Program
 
         return res;
     }
-
-
 
     public static string KeepSpaceAndAlphanumeric(string input) // Chỉ giữ lại các ký tự chữ và số (từ A - Z từ 0 - 9 và bỏ qua các ký tự đặc biệt)
     {
@@ -152,10 +164,10 @@ class Program
         try
         {
             // Xác định ID wrapper dựa trên type
-            string imageClass = (imgType == "portrait") ? "image_upload" : "second_image_upload";
+            string imageClass = (imgType == "portrait") ? "poster_" : "";
 
             // FIX LỖI XPATH: Đã xóa dấu ngoặc kép thừa ở cuối
-            string xpathQuery = $"//*[@id='{imageClass}']//input[@type='file']";
+            string xpathQuery = $"//*[@id='image_{imageClass}upload']//input[@type='file']";
 
             var fileInputs = driver.FindElements(By.XPath(xpathQuery));
 
@@ -178,6 +190,47 @@ class Program
             Console.WriteLine("Lỗi khi upload file: " + ex.Message + ex.StackTrace);
         }
     }
+
+    static void UploadVideoFile(IWebDriver driver, string filePath)
+    {
+        try
+        {
+            // 2. Tìm thẻ input file ẩn trên giao diện
+            // Thông thường các thư viện Web sẽ giấu thẻ này đi, nhưng nó luôn tồn tại để nhận file.
+            IWebElement fileInput = driver.FindElement(By.XPath("//div[@id='video_upload']//input[@type='file']"));
+
+            // 3. Truyền đường dẫn file vào thẻ input để hệ thống tự động upload
+            fileInput.SendKeys(filePath);
+
+            // 4. Chờ một khoảng thời gian dài hơn để video upload xong (tùy thuộc vào dung lượng video và mạng)
+            // Bạn nên nâng thời gian chờ hoặc dùng WebDriverWait để theo dõi cho tới khi nút "Next" sáng lên.
+            Thread.Sleep(10000);
+
+            var uploadedFileLocator = By.XPath($"//video[@id='videoPlayer_html5_api']");
+            for (int i = 0; i < 5000; i++)
+            {
+                try
+                {
+                    driver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(5);
+                    var playerElements = driver.FindElements(uploadedFileLocator);
+                    if (playerElements.Count() > 0)
+                    {
+                        if (playerElements.First().Displayed)
+                        {
+                            break;
+                        }
+                    }
+                }
+                catch { }
+                Thread.Sleep(10000);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Lỗi khi upload file: " + ex.Message);
+        }
+    }
+
 
     // --- HÀM 2: HÀM LOGIN (NẰM TÁCH BIỆT HOÀN TOÀN VỚI MAIN) ---
     static void Login(IWebDriver driver)
@@ -206,7 +259,6 @@ class Program
             IWebElement passwordField = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"loginform-password\"]")));
             passwordField.Clear();
             passwordField.SendKeys("Metavision@123");
-
 
             Console.WriteLine("Nhap captcha vao day");
             string captcha = Console.ReadLine();
@@ -295,63 +347,166 @@ class Program
         }
     }
 
-    static string[] rootMovieFolders = @"\\hp245g8\NetFlixaAll64Tb,\\msi\NetFlixMsi1,\\msi\NetFlixMsi2,\\msi\NetFlixMsi3,\\msi\NetFlixMsi4,\\msi\NetFlixMsi5".Split(','); // Thư mục chứa phim
+    static string[] rootMovieFolders = @"D:\Downloads\Tải phim tổng hợp".Split(','); // Thư mục chứa phim
     static ArrayList allMovieDirectories = new ArrayList();
-    static string LocateMp4ByMovieName(string movieName)
+
+    static bool GetVideoUrl(IWebDriver driver, By videoLocator = null, int timeoutSeconds = 10)
     {
-        string res = "";
-        if (allMovieDirectories.Count == 0)
-        {
-            foreach (string rootMovieFolder in rootMovieFolders)
-            {
-                var movies = Directory.GetDirectories(rootMovieFolder);
-                allMovieDirectories.AddRange(movies);
-            }
-        }
+        // Kiểm tra và gán locator mặc định khi không truyền vào
+        videoLocator ??= By.CssSelector("input[type='file']");
 
-        foreach (string existedMovie in allMovieDirectories)
+        try
         {
-            if (KeepSpaceAndAlphanumeric(Path.GetFileName(existedMovie)) ==
-                KeepSpaceAndAlphanumeric(movieName))
-            {
-                // found the expected movie
-                var mp4Files = Directory.GetFiles(existedMovie, "*.mp4");
-                if (mp4Files.Count() > 0)
-                {
-                    res = mp4Files[0];
-                    break;
-                }
-                else
-                {
-                    continue;
-                }
-            }
-        }
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(timeoutSeconds));
 
-        return res;
+            // 1. Định vị thẻ input dùng để upload file (Thay ID hoặc Selector tương ứng với CMS của bạn)
+            By uploadInputLocator = By.CssSelector("");
+
+            IWebElement uploadElement = driver.FindElement(uploadInputLocator);
+
+            // 2. Đường dẫn tuyệt đối tới file video nằm trên máy tính của bạn (My PC)
+            string filePath = @"D:\Downloads\Tải phim tổng hợp";
+
+            // 3. Tải file lên bằng cách truyền đường dẫn trực tiếp vào thẻ input
+            uploadElement.SendKeys(filePath);
+
+            return true;
+
+        }
+        catch (NoSuchElementException)
+        {
+            return false;
+        }
+        catch (WebDriverTimeoutException)
+        {
+            return false;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 
-    static void TaiVideoPhim(IWebDriver driver, WebDriverWait wait, string tenAnh, string videoName = "")
+    static void UploadAnEpisode(IWebDriver driver, WebDriverWait wait, string tenAnh, string tenKhmer, string motaKhmer, string mp4Path, string videoName = "")
     {
         try
         {
-            IWebElement createFilmSeries = driver.FindElement(By.XPath("//*[@id=\"mainGridPjax\"]/div[1]/div[1]/div[2]/div/a")); //Nút Create Film Series
+            IWebElement createFilmSeries = driver.FindElement(By.XPath("//a[contains(text(), 'Create Film Series')]")); //Nút Create Film Series
             createFilmSeries.Click();
-
+            
             System.Threading.Thread.Sleep(20000); // Đợi trong thời gian 20 giây
-
-            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"video_upload\"]/div/div/div[2]/input"))); // Nút bấm tải video file
-            uploadVideoFile.Click();
+            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id='video_upload']/div/div/div[2]/input"))); // Nút bấm tải video file
+            //uploadVideoFile.FindElement(By.XPath("..")).Click();
 
             string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tenAnh : videoName;
-            string folderPath = @"C:/Tải phim/Phim Bộ Hàn";
+            string folderPath = @"D:\Downloads\Tải phim tổng hợp";
+            string[] imgPath = GetImagePathByMovieName(folderPath, targetImageName);
+            string imgPathNgang = imgPath[0];
+            string imgPathDoc = imgPath[1];
 
+            try
+            {
+                UploadVideoFile(driver, mp4Path);
+                UploadImgFile(driver, imgPathNgang,"");
 
+                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value); // Xác định số thứ tự tập phim dựa theo Biểu thức Chính quy
+                IWebElement shortDesc = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-short_desc']")); // Nut bam vao dien ten tieng Kho-me
+                shortDesc.SendKeys(tenKhmer);
+
+                IWebElement Desc = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-description']")); // tom tat tieng Khmer
+                shortDesc.SendKeys(motaKhmer);
+
+                IWebElement detailInfoButton = driver.FindElement(By.XPath("//*[@id='video-tabs']/ul/li[2]/a"));
+                detailInfoButton.Click(); // Nut bam thong tin phim
+
+                IWebElement distServiceButton = driver.FindElement(By.XPath("//*[@id='tab_2']/div/div[1]/div/div/div[1]/div/div[1]/span[2]/span[1]/span/ul/li/input")); // Don vi phan phoi
+                distServiceButton.Click();
+
+                IWebElement distServiceSelection = driver.FindElement(By.XPath("//li[.='TV360']")); // Tick vao nut TV360
+                distServiceSelection.Click();
+               
+                IWebElement filmInfoButton = driver.FindElement(By.XPath("//*[@id='video-tabs']/ul/li[3]/a")); // Nhap thong tin phim
+                filmInfoButton.Click();
+
+                IWebElement seriesMovieButton = driver.FindElement(By.XPath("//span[.='Select Series Film']")); // Nhap thong tin phim
+                seriesMovieButton.Click();
+
+                string newMovieName = videoName.Replace("Max's Puppy Dog", "Max&#039;s Puppy Dog");
+                IWebElement filmSelect = driver.FindElement(By.XPath($"//li[.='{newMovieName}']")); // Nhap thong tin phim
+                filmSelect.Click();
+
+                IWebElement numEpisode = driver.FindElement(By.Id("csmmediafilmseries-episode_no")); // Nhap so thu tu tap
+                numEpisode.SendKeys($"{episodeIndex}");
+
+                IWebElement nameEpisode = driver.FindElement(By.Id("csmmediafilmseries-episode_name")); // Nhap ten tap
+                nameEpisode.SendKeys($"Episode {episodeIndex}");
+                nameEpisode.SendKeys(Keys.Tab);
+
+                IWebElement saveButton = driver.FindElement(By.XPath("//button[.='Save']")); // Luu phim
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", saveButton);
+                saveButton.Click();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Đã xảy ra lỗi: {ex.Message}");
         }
-
     }
+
+    static void InitDriver()
+    {
+        ChromeOptions options = new ChromeOptions();
+
+        // 1. Chỉ định thư mục lưu trữ Profile người dùng (đường dẫn tùy chọn trên máy bạn)
+        // Lưu ý: Dùng ký tự '@' trước chuỗi đường dẫn
+        string profilePath = @"C:\SeleniumProfiles\MyUserSession";
+        options.AddArgument($"user-data-dir={profilePath}");
+
+        // 2. (Thùy chọn) Chọn tên profile cụ thể, mặc định là "Default"
+        options.AddArgument("profile-directory=Default");
+
+        driver = new ChromeDriver(options);
+        driver.Manage().Window.Maximize();
+
+        // Mở trang web cần làm việc
+        driver.Navigate().GoToUrl("https://cms.tv360.metfone.com.kh/login");
+        Login(driver); return;
+
+        // Kiểm tra xem đã đăng nhập chưa (ví dụ: tìm 1 element chỉ xuất hiện khi đã log in)
+        bool isLoggedIn = CheckIfLoggedIn(driver);
+
+        if (!isLoggedIn)
+        {
+            Console.WriteLine("Chưa đăng nhập. Hãy thực hiện đăng nhập thủ công...");
+
+            // Cho người dùng 60s để tự gõ ID/Password/OTP/Captcha đăng nhập
+            // Sau khi đăng nhập xong, Profile sẽ tự động lưu lại tất cả vào ổ cứng
+            System.Threading.Thread.Sleep(60000);
+        }
+        else
+        {
+            Console.WriteLine("Đã nhận diện phiên đăng nhập cũ! Tiếp tục cào dữ liệu/thao tác...");
+        }
+    }
+
+    static bool CheckIfLoggedIn(IWebDriver driver)
+    {
+        try
+        {
+            // Thay đổi By.Id hoặc By.CssSelector phù hợp với trang web của bạn
+            // Ví dụ: Tìm nút "Avatar" hoặc "Đăng xuất"
+            return driver.FindElements(By.CssSelector(".user-avatar")).Count > 0;
+
+
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
 }
