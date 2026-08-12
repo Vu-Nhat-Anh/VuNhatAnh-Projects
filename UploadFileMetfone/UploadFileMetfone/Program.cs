@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 class Program
@@ -35,6 +36,7 @@ class Program
             IWebElement mediaUpload = wait.Until(d => d.FindElement(By.XPath("//span[.='Media Upload']")));
             mediaUpload.Click();
 
+            Thread.Sleep(500);
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(1));
             IWebElement uploadFilmSeries = wait.Until(d => d.FindElement(By.XPath("//span[.='Upload Film Series']")));
             uploadFilmSeries.Click();
@@ -77,16 +79,19 @@ class Program
                         {
                             string fileToUpload = fileToUploads[j];
                             string epName = Path.GetFileName(fileToUpload);
+                            string tenPhimMoi = string.IsNullOrEmpty(tendoilai) ? tengoc : tendoilai;
+                            string seasonEpisodeIndex = Regex.Match(epName, @"S\d+E\d+", RegexOptions.IgnoreCase).Value;
+                            string episodeNewName = $"{tenPhimMoi}_{seasonEpisodeIndex}";
 
                             IWebElement searchFilm = driver.FindElement(By.XPath("//*[@id=\"csm_media_grid-filters\"]/td[4]/input"));
                             searchFilm.Click(); searchFilm.Clear(); System.Threading.Thread.Sleep(500);
                             searchFilm = driver.FindElement(By.XPath("//*[@id=\"csm_media_grid-filters\"]/td[4]/input"));
-                            searchFilm.SendKeys(epName + Keys.Enter); System.Threading.Thread.Sleep(2000);
+                            searchFilm.SendKeys(episodeNewName + Keys.Enter); System.Threading.Thread.Sleep(2000);
                             var results = driver.FindElements(By.XPath("//tbody/tr[@role='row']"));
 
                             if (!results.Any())
                             {
-                                UploadAnEpisode(driver, wait, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile);
+                                UploadAnEpisode(driver, wait, tengoc, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile, episodeNewName);
                             }
                             else
                             {
@@ -106,8 +111,6 @@ class Program
                     Console.WriteLine($"Đã xảy ra lỗi: {ex.Message} {ex.StackTrace}");
                 }
             }
-
-
         }
         catch (Exception ex)
         {
@@ -283,11 +286,10 @@ class Program
         }
     }
 
-    static void taoVoPhim(IWebDriver driver, WebDriverWait wait, string tenAnh, string sotap, string motaKhmer, string imageName = "")
+    static void TaoVoPhim(IWebDriver driver, WebDriverWait wait, string tenAnh, string sotap, string motaKhmer, string imageName = "")
     {
         try
         {
-
             IWebElement CreateFilm = wait.Until(d => d.FindElement(By.XPath("/html/body/div/div[3]/div[2]/div/div[2]/div/div/div[1]/div[2]/a")));
             CreateFilm.Click();
 
@@ -387,7 +389,7 @@ class Program
         }
     }
 
-    static void UploadAnEpisode(IWebDriver driver, WebDriverWait wait, string tenAnh, string tenKhmer, string motaKhmer, string mp4Path, string videoName = "")
+    static void UploadAnEpisode(IWebDriver driver, WebDriverWait wait, string tengoc, string tenAnh, string tenKhmer, string motaKhmer, string mp4Path, string videoName, string episodeNewName)
     {
         try
         {
@@ -409,12 +411,16 @@ class Program
                 UploadVideoFile(driver, mp4Path);
                 UploadImgFile(driver, imgPathNgang,"");
 
-                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value); // Xác định số thứ tự tập phim dựa theo Biểu thức Chính quy
-                IWebElement shortDesc = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-short_desc']")); // Nut bam vao dien ten tieng Kho-me
-                shortDesc.SendKeys(tenKhmer);
+                IWebElement episodeNameInput = driver.FindElement(By.XPath("//*[@id='csmmedia-name']")); // Nut bam vao dien ten tieng Kho-me
+                episodeNameInput.Clear();
+                episodeNameInput.SendKeys(episodeNewName);
 
-                IWebElement Desc = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-description']")); // tom tat tieng Khmer
-                shortDesc.SendKeys(motaKhmer);
+                int episodeIndex = int.Parse(System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(mp4Path), @"S\d+E(\d+)").Groups[1].Value); // Xác định số thứ tự tập phim dựa theo Biểu thức Chính quy
+                IWebElement shortDescInput = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-short_desc']")); // Nut bam vao dien ten tieng Kho-me
+                shortDescInput.SendKeys(tenKhmer);
+
+                IWebElement descInput = driver.FindElement(By.XPath("//*[@id='csmmediafilmseries-description']")); // tom tat tieng Khmer
+                descInput.SendKeys(motaKhmer);
 
                 IWebElement detailInfoButton = driver.FindElement(By.XPath("//*[@id='video-tabs']/ul/li[2]/a"));
                 detailInfoButton.Click(); // Nut bam thong tin phim
@@ -508,5 +514,4 @@ class Program
             return false;
         }
     }
-
 }
