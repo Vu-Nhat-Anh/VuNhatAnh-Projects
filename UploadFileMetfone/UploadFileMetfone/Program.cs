@@ -445,7 +445,7 @@ class Program
                 numEpisode.SendKeys($"{episodeIndex}");
 
                 IWebElement nameEpisode = driver.FindElement(By.Id("csmmediafilmseries-episode_name")); // Nhap ten tap
-                nameEpisode.SendKeys($"Episode {episodeIndex}");
+                nameEpisode.SendKeys($"Ep {episodeIndex}");
                 nameEpisode.SendKeys(Keys.Tab);
 
                 IWebElement saveButton = driver.FindElement(By.XPath("//button[.='Save']")); // Luu phim
