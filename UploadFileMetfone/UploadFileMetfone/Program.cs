@@ -1,5 +1,6 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using System;
 using System.Collections;
@@ -42,13 +43,6 @@ class Program
             uploadFilmSeries.Click();
 
             string[] movieToUploads = System.IO.File.ReadAllLines("\\\\msi\\voice_storage\\movie_images\\metfone_series_upload.txt").Reverse().ToArray();
-            string[] allMovieFolders = System.IO.File.ReadAllLines("C:\\scripts\\list_movies.txt").Reverse().ToArray();
-            Dictionary<string, string> dictAllMovies = new Dictionary<string, string>();
-            foreach (var movieFolder in allMovieFolders)
-            {
-                var movieName = Path.GetFileName(movieFolder);
-                if (!dictAllMovies.ContainsKey(movieName)) dictAllMovies.Add(movieName, movieFolder);
-            }
 
             // duyet tung phim trong danh sach lay tu file text
             for (int i = 0; i < movieToUploads.Length; i++)
@@ -65,20 +59,19 @@ class Program
                 string motaKhmer = items[4];
                 string sotap = items[5];
                 string imageFile = items[7];
-                if (!dictAllMovies.ContainsKey(tengoc)) continue;    // the movieName was not found
 
                 try
                 {
-                    string movieFolder = dictAllMovies[tengoc];  // lay ve thu muc chua phim
-                    var fileToUploads = Directory.GetFiles(movieFolder, "*.mp4", SearchOption.AllDirectories);  // lay dach sach file phim (mp4) trong thu muc chua phim
+                    //var fileToUploads = GetVideoFilesByMovieNameByNetFlix(tengoc);
+                    var fileToUploads = GetVideoFilesByMovieNameInMixFolder(tengoc);
 
                     // duyet tung tap phim
                     for (int j = 0; j < fileToUploads.Length; j++)
                     {
                         try
                         {
-                            string fileToUpload = fileToUploads[j];
-                            string epName = Path.GetFileName(fileToUpload);
+                            string orgFileToUpload = fileToUploads[j];
+                            string epName = Path.GetFileName(orgFileToUpload);
                             string tenPhimMoi = string.IsNullOrEmpty(tendoilai) ? tengoc : tendoilai;
                             string seasonEpisodeIndex = Regex.Match(epName, @"S\d+E\d+", RegexOptions.IgnoreCase).Value;
                             string episodeNewName = $"{tenPhimMoi}_{seasonEpisodeIndex}";
@@ -91,7 +84,14 @@ class Program
 
                             if (!results.Any())
                             {
+                                string fileToUpload = $"{Path.GetDirectoryName(orgFileToUpload)}\\{seasonEpisodeIndex}.mp4";
+                                File.Copy(orgFileToUpload, fileToUpload);
                                 UploadAnEpisode(driver, wait, tengoc, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile, episodeNewName);
+                                try
+                                {
+                                    File.Delete(fileToUpload);
+                                }
+                                catch { }
                             }
                             else
                             {
@@ -117,6 +117,102 @@ class Program
             Console.WriteLine($"Loi he thong: {ex.Message}");
         }
     }
+
+    // tra ve danh sach cac file video thuoc ve phim movieName (phim chua trong cac thu muc net flix)
+    static string[] GetVideoFilesByMovieNameByNetFlix(string movieName)
+    {
+        string [] videoFiles = new string[0];
+        string[] allMovieFolders = System.IO.File.ReadAllLines("C:\\scripts\\list_movies.txt").Reverse().ToArray();
+        Dictionary<string, string> dictAllMovies = new Dictionary<string, string>();
+        foreach (var existMovieFolder in allMovieFolders)
+        {
+            var existMovieName = Path.GetFileName(existMovieFolder);
+            if (!dictAllMovies.ContainsKey(existMovieName)) dictAllMovies.Add(existMovieName, existMovieFolder);
+        }
+
+        if(dictAllMovies.ContainsKey(movieName))
+        {
+            string movieFolder = dictAllMovies[movieName];
+            videoFiles = Directory.GetFiles(movieName, "*.mp4", SearchOption.AllDirectories);
+        }
+
+        return videoFiles;
+    }
+
+    // tra ve danh sach cac file video thuoc ve phim movieName (phim chua trong cac thu muc net flix)
+    static string[] GetVideoFilesByMovieNameInMixFolder(string movieName)
+    {
+        string[] videoFiles = new string[0];
+        string mixKmFolder = @"\\HP245G8\voice over\MIX_VIDEOS.km";
+        string[] allMovieFolders = Directory.GetDirectories(mixKmFolder);
+
+        // lay danh sach film la tat ca cac folder trong thu muc mixKmFolder
+        Dictionary<string, string> dictAllMovies = new Dictionary<string, string>();
+        foreach (var existMovieFolder in allMovieFolders)
+        {
+            var existMovieName = Path.GetFileName(existMovieFolder);
+            if (!dictAllMovies.ContainsKey(existMovieName)) dictAllMovies.Add(existMovieName, existMovieFolder);
+        }
+
+        // Nhom cac file video theo episode index
+        if (dictAllMovies.ContainsKey(movieName))
+        {
+            string movieFolder = dictAllMovies[movieName];
+            videoFiles = Directory.GetFiles(movieFolder, "*.mp4", SearchOption.AllDirectories);
+            Dictionary<string, ArrayList> dictFileByEpisode = new Dictionary<string, ArrayList>();
+            foreach(var videoFile in videoFiles)
+            {
+                string seasonEpisodeIndex = Regex.Match(Path.GetFileNameWithoutExtension(videoFile), @"S\d+E\d+", RegexOptions.IgnoreCase).Value;
+                if(!dictFileByEpisode.ContainsKey(seasonEpisodeIndex))
+                {
+                    dictFileByEpisode.Add(seasonEpisodeIndex, new ArrayList());
+                }
+                dictFileByEpisode[seasonEpisodeIndex].Add(videoFile);
+            }
+
+            ArrayList selectedVideos = new ArrayList();
+            foreach (var epGroup in dictFileByEpisode)
+            {
+                ArrayList videoFilesByEpIndex = epGroup.Value;
+                var selectedVideo = "";
+
+                // uu tien chon file co chua chuoi extracted
+                foreach (string mp4file in videoFilesByEpIndex)
+                {
+                    if (mp4file.Contains("extracted"))
+                    {
+                        selectedVideo = mp4file;
+                        break;
+                    }
+                }
+
+                // uu tien chon file khong co chuoi mix.km
+                if (selectedVideo == "")
+                {
+                    foreach (string mp4file in videoFilesByEpIndex)
+                    {
+                        if (!mp4file.Contains("mix.km"))
+                        {
+                            selectedVideo = mp4file;
+                            break;
+                        }
+
+                    }
+                }
+
+                if (selectedVideo == "" && videoFilesByEpIndex.Count > 0)
+                {
+                    selectedVideo = (string)videoFilesByEpIndex[0];
+                }
+                selectedVideos.Add(selectedVideo);
+            }
+
+            videoFiles = selectedVideos.Cast<string>().ToArray();
+        }
+
+        return videoFiles;
+    }
+
 
     static string[] GetImagePathByMovieName(string folderPath, string movieName)
     {
