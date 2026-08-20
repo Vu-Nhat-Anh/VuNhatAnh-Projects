@@ -262,12 +262,19 @@ class Program
     {
         try
         {
+
             // Xác định ID wrapper dựa trên type
             string imageClass = (imgType == "portrait") ? "poster_" : "";
 
             // FIX LỖI XPATH: Đã xóa dấu ngoặc kép thừa ở cuối
-            string xpathQuery = $"//*[@id='image_{imageClass}upload']//input[@type='file']";
+            string xpathQuery = $"//div[@id='image_{imageClass}upload']//input[@type='file']";
 
+            if (string.IsNullOrEmpty(imgFullFilePath))
+            {
+                Console.WriteLine($"[Lỗi nghiêm trọng] Không thể upload vì imgFullFilePath của loại '{imgType}' ĐANG BỊ RỖNG!");
+                return; // Dừng hàm luôn, không chạy tiếp xuống SendKeys nữa
+            }
+           
             var fileInputs = driver.FindElements(By.XPath(xpathQuery));
 
             if (fileInputs.Count > 0)
@@ -352,12 +359,12 @@ class Program
             // Tìm và điền Username vào Tab mới
             IWebElement usernameField = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"loginform-username\"]")));
             usernameField.Clear();
-            usernameField.SendKeys("Metavision_Upload");
+            usernameField.SendKeys("NKCfilm_Upload");
 
             // Tìm và điền Password
             IWebElement passwordField = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"loginform-password\"]")));
             passwordField.Clear();
-            passwordField.SendKeys("Metavision@123");
+            passwordField.SendKeys("NKCFilm@123");
 
             Console.WriteLine("Nhap captcha vao day");
             string captcha = Console.ReadLine();
@@ -485,7 +492,7 @@ class Program
         }
     }
 
-    static void UploadAnEpisode(IWebDriver driver, WebDriverWait wait, string tengoc, string tenAnh, string tenKhmer, string motaKhmer, string mp4Path, string videoName, string episodeNewName)
+    static void UploadAnEpisode(IWebDriver driver, WebDriverWait wait, string tengoc, string tendoilai, string tenKhmer, string motaKhmer, string mp4Path, string videoName, string episodeNewName)
     {
         try
         {
@@ -496,8 +503,8 @@ class Program
             IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id='video_upload']/div/div/div[2]/input"))); // Nút bấm tải video file
             //uploadVideoFile.FindElement(By.XPath("..")).Click();
 
-            string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tenAnh : videoName;
-            string folderPath = @"D:\Downloads\Tải phim tổng hợp";
+            string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tengoc : tendoilai;
+            string folderPath = @"D:\Downloads\Tải phim tổng hợp\Vỏ phim mới";
             string[] imgPath = GetImagePathByMovieName(folderPath, targetImageName);
             string imgPathNgang = imgPath[0];
             string imgPathDoc = imgPath[1];
@@ -519,7 +526,7 @@ class Program
                 descInput.SendKeys(motaKhmer);
 
                 IWebElement detailInfoButton = driver.FindElement(By.XPath("//*[@id='video-tabs']/ul/li[2]/a"));
-                detailInfoButton.Click(); // Nut bam thong tin phim
+                ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].click();", detailInfoButton);  // Nut bam thong tin phim
 
                 IWebElement distServiceButton = driver.FindElement(By.XPath("//*[@id='tab_2']/div/div[1]/div/div/div[1]/div/div[1]/span[2]/span[1]/span/ul/li/input")); // Don vi phan phoi
                 distServiceButton.Click();
@@ -544,9 +551,14 @@ class Program
                 nameEpisode.SendKeys($"Ep {episodeIndex}");
                 nameEpisode.SendKeys(Keys.Tab);
 
+                IWebElement ageRestrictionDropDown = driver.FindElement(By.XPath("//*[@id=\"tab_3\"]/div/div[1]/div/div/div[5]/div[1]/div[1]/span[2]/span[1]/span/span[2]"));
+                ageRestrictionDropDown.Click();
+
+                IWebElement ageRestrictionSelection = driver.FindElement(By.XPath("//*[@id=\"select2-csmmediafilmseries-meta_age_restrictions-container\"]/text()"));
+                ageRestrictionSelection.Click();
+
                 IWebElement saveButton = driver.FindElement(By.XPath("//button[.='Save']")); // Luu phim
                 ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", saveButton);
-                saveButton.Click();
             }
             catch (Exception ex)
             {
@@ -571,7 +583,7 @@ class Program
         // 2. (Thùy chọn) Chọn tên profile cụ thể, mặc định là "Default"
         options.AddArgument("profile-directory=Default");
 
-        driver = new ChromeDriver(options);
+        driver = new ChromeDriver();
         driver.Manage().Window.Maximize();
 
         // Mở trang web cần làm việc
