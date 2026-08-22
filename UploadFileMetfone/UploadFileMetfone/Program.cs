@@ -84,14 +84,41 @@ class Program
 
                             if (!results.Any())
                             {
-                                string fileToUpload = $"{Path.GetDirectoryName(orgFileToUpload)}\\{seasonEpisodeIndex}.mp4";
-                                File.Copy(orgFileToUpload, fileToUpload);
-                                UploadAnEpisode(driver, wait, tengoc, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile, episodeNewName);
+                                string uniqueId = Guid.NewGuid().ToString().Substring(0, 4);
+                                string fileToUpload = $"{Path.GetDirectoryName(orgFileToUpload)}\\{seasonEpisodeIndex}_temp_{uniqueId}.mp4";
+
+                                // 1️⃣ KHAI BÁO BIẾN Ở ĐÂY (Mặc định là false)
+                                bool isCopied = false;
+
+                                if (!string.Equals(orgFileToUpload, fileToUpload, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    File.Copy(orgFileToUpload, fileToUpload, true);
+
+                                    // 2️. BẬT THÀNH TRUE sau khi copy thành công
+                                    isCopied = true;
+                                    Console.WriteLine($"[COPY] Đã tạo file tạm.");
+                                }
+                                else
+                                {
+                                    fileToUpload = orgFileToUpload;
+                                }
+
                                 try
                                 {
-                                    File.Delete(fileToUpload);
+                                    UploadAnEpisode(driver, wait, tengoc, tendoilai, tenKhmer, motaKhmer, fileToUpload, imageFile, episodeNewName);
                                 }
-                                catch { }
+                                finally
+                                {
+                                    // 3️. KIỂM TRA BIẾN Ở ĐÂY: Nếu đúng là có copy file tạm thì mới tiến hành xóa
+                                    if (isCopied && File.Exists(fileToUpload))
+                                    {
+                                        try
+                                        {
+                                            File.Delete(fileToUpload);
+                                        }
+                                        catch { }
+                                    }
+                                }
                             }
                             else
                             {
@@ -498,8 +525,8 @@ class Program
         {
             IWebElement createFilmSeries = driver.FindElement(By.XPath("//a[contains(text(), 'Create Film Series')]")); //Nút Create Film Series
             createFilmSeries.Click();
-            
-            System.Threading.Thread.Sleep(20000); // Đợi trong thời gian 20 giây
+
+            wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20)); // Đợi trong thời gian 20 giây
             IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id='video_upload']/div/div/div[2]/input"))); // Nút bấm tải video file
             //uploadVideoFile.FindElement(By.XPath("..")).Click();
 
@@ -540,8 +567,7 @@ class Program
                 IWebElement seriesMovieButton = driver.FindElement(By.XPath("//span[.='Select Series Film']")); // Nhap thong tin phim
                 seriesMovieButton.Click();
 
-                string newMovieName = videoName.Replace("Max's Puppy Dog", "Max&#039;s Puppy Dog");
-                IWebElement filmSelect = driver.FindElement(By.XPath($"//li[.='{newMovieName}']")); // Nhap thong tin phim
+                IWebElement filmSelect = driver.FindElement(By.XPath($"//li[.='{videoName}']")); // Nhap thong tin phim
                 filmSelect.Click();
 
                 IWebElement numEpisode = driver.FindElement(By.Id("csmmediafilmseries-episode_no")); // Nhap so thu tu tap
@@ -554,11 +580,13 @@ class Program
                 IWebElement ageRestrictionDropDown = driver.FindElement(By.XPath("//*[@id=\"tab_3\"]/div/div[1]/div/div/div[5]/div[1]/div[1]/span[2]/span[1]/span/span[2]"));
                 ageRestrictionDropDown.Click();
 
-                IWebElement ageRestrictionSelection = driver.FindElement(By.XPath("//*[@id=\"select2-csmmediafilmseries-meta_age_restrictions-container\"]/text()"));
-                ageRestrictionSelection.Click();
+                IWebElement ageRestrictionSelection = driver.FindElement(By.XPath("/html/body/span/span/span[1]/input"));
+                ageRestrictionSelection.SendKeys("The program is allowed to be disseminated to listeners and viewers aged 13 and over");
+                ageRestrictionSelection.SendKeys(Keys.Enter);
 
                 IWebElement saveButton = driver.FindElement(By.XPath("//button[.='Save']")); // Luu phim
                 ((IJavaScriptExecutor)driver).ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", saveButton);
+                saveButton.Click();
             }
             catch (Exception ex)
             {
