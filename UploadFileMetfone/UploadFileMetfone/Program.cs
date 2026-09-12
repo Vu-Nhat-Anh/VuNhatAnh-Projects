@@ -218,7 +218,7 @@ class Program
                 {
                     foreach (string mp4file in videoFilesByEpIndex)
                     {
-                        if (!mp4file.Contains("mix.km"))
+                        if (mp4file.Contains("mix.km"))
                         {
                             selectedVideo = mp4file;
                             break;
@@ -527,7 +527,7 @@ class Program
             createFilmSeries.Click();
 
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20)); // Đợi trong thời gian 20 giây
-            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//*[@id='video_upload']/div/div/div[2]/input"))); // Nút bấm tải video file
+            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//div[.='Upload a file']"))); // Nút bấm tải video file
             //uploadVideoFile.FindElement(By.XPath("..")).Click();
 
             string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tengoc : tendoilai;
@@ -567,6 +567,7 @@ class Program
                 IWebElement seriesMovieButton = driver.FindElement(By.XPath("//span[.='Select Series Film']")); // Nhap thong tin phim
                 seriesMovieButton.Click();
 
+                videoName = tendoilai.Replace("'", "&#039;").Replace(" -", ":");
                 IWebElement filmSelect = driver.FindElement(By.XPath($"//li[.='{videoName}']")); // Nhap thong tin phim
                 filmSelect.Click();
 
