@@ -386,12 +386,12 @@ class Program
             // Tìm và điền Username vào Tab mới
             IWebElement usernameField = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"loginform-username\"]")));
             usernameField.Clear();
-            usernameField.SendKeys("NKCfilm_Upload");
+            usernameField.SendKeys("Metavision_Upload");
 
             // Tìm và điền Password
             IWebElement passwordField = wait.Until(d => d.FindElement(By.XPath("//*[@id=\"loginform-password\"]")));
             passwordField.Clear();
-            passwordField.SendKeys("NKCFilm@123");
+            passwordField.SendKeys("Metavision@123");
 
             Console.WriteLine("Nhap captcha vao day");
             string captcha = Console.ReadLine();
@@ -527,11 +527,11 @@ class Program
             createFilmSeries.Click();
 
             wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20)); // Đợi trong thời gian 20 giây
-            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("//div[.='Upload a file']"))); // Nút bấm tải video file
+            IWebElement uploadVideoFile = wait.Until(d => d.FindElement(By.XPath("(//div[.='Upload a file'])[position()=1]"))); // Nút bấm tải video file
             //uploadVideoFile.FindElement(By.XPath("..")).Click();
 
             string targetImageName = string.IsNullOrWhiteSpace(videoName) ? tengoc : tendoilai;
-            string folderPath = @"D:\Downloads\Tải phim tổng hợp\Vỏ phim mới";
+            string folderPath = @"C:\Tải phim";
             string[] imgPath = GetImagePathByMovieName(folderPath, targetImageName);
             string imgPathNgang = imgPath[0];
             string imgPathDoc = imgPath[1];
