@@ -123,6 +123,7 @@ class Program
                             else
                             {
                                 Console.WriteLine($"Đã upload : {epName}");
+                                Console.ReadLine();
                                 continue;
                             }
                         }
